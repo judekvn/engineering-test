@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, Dispatch, SetStateAction } from "react"
 import styled from "styled-components"
 import Button from "@material-ui/core/ButtonBase"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
@@ -9,10 +9,15 @@ import { Person } from "shared/models/person"
 import { useApi } from "shared/hooks/use-api"
 import { StudentListTile } from "staff-app/components/student-list-tile/student-list-tile.component"
 import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active-roll-overlay/active-roll-overlay.component"
+import { Switch } from '@material-ui/core';
+import { faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons"
 
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
   const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
+  const [sortOrder, setSortOrder] = useState<string>('asc')
+  const [sortName, setSortName] = useState<string>('first_name')
+  const [searchName, setSearchName] = useState<string>('')
 
   useEffect(() => {
     void getStudents()
@@ -33,7 +38,16 @@ export const HomeBoardPage: React.FC = () => {
   return (
     <>
       <S.PageContainer>
-        <Toolbar onItemClick={onToolbarAction} />
+        <Toolbar
+          onItemClick={onToolbarAction}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
+          sortName={sortName}
+          setSortName={setSortName}
+          searchName={searchName}
+          setSearchName={setSearchName}
+
+        />
 
         {loadState === "loading" && (
           <CenteredContainer>
@@ -62,14 +76,37 @@ export const HomeBoardPage: React.FC = () => {
 
 type ToolbarAction = "roll" | "sort"
 interface ToolbarProps {
-  onItemClick: (action: ToolbarAction, value?: string) => void
+  onItemClick: (action: ToolbarAction, value?: string) => void;
+  sortOrder: string;
+  setSortOrder: Dispatch<SetStateAction<string>>;
+  sortName: string;
+  setSortName: Dispatch<SetStateAction<string>>;
+  searchName: string;
+  setSearchName: Dispatch<SetStateAction<string>>;
 }
 const Toolbar: React.FC<ToolbarProps> = (props) => {
-  const { onItemClick } = props
+  const [sortByFirstName, setSortByFirstName] = useState(false)
+  const { onItemClick, setSortOrder, sortOrder, searchName, setSearchName } = props
+
   return (
     <S.ToolbarContainer>
-      <div onClick={() => onItemClick("sort")}>First Name</div>
-      <div>Search</div>
+      <S.NameContainer>
+        <S.ArrowButton onClick={() => sortOrder === "asc" ? setSortOrder("desc") : setSortOrder("asc")}>
+          <FontAwesomeIcon icon={sortOrder === "asc" ? faArrowDown : faArrowUp} />
+        </S.ArrowButton>
+        <S.ToolbarName> Name </S.ToolbarName>
+        <S.SwitchContainer>
+          <span>First Name</span>
+          <Switch
+            checked={sortByFirstName}
+            onChange={() => sortByFirstName ? setSortByFirstName(false) : setSortByFirstName(true)}
+            name="sortByName"
+            inputProps={{ 'aria-label': 'secondary checkbox' }}
+          />
+          <span>Last Name</span>
+        </S.SwitchContainer>
+      </S.NameContainer>
+      <S.InputContainer placeholder="Search" value={searchName} onChange={(e) => setSearchName(e.target.value)} />
       <S.Button onClick={() => onItemClick("roll")}>Start Roll</S.Button>
     </S.ToolbarContainer>
   )
@@ -99,4 +136,29 @@ const S = {
       border-radius: ${BorderRadius.default};
     }
   `,
+  InputContainer: styled.input`
+  background-color: ${Colors.neutral.lighter};
+  border: transparent;
+  font-size: 15px;
+  border-radius: 5px;
+  padding 10px;
+  outline: none;
+  `,
+  ArrowButton: styled.a`
+  text-decoration: none;
+  cursor: pointer;
+  `,
+  ToolbarName: styled.span`
+  margin: 0 10px;
+  `,
+  SwitchContainer: styled.div`
+  font-size: 12px;
+  margin-left: 30px
+  `,
+  NameContainer: styled.div`
+  min-width: 220px;
+  text-align: justify;
+  font-size: 15px;
+  `,
+
 }
