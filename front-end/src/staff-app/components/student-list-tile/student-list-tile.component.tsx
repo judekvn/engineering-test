@@ -1,4 +1,4 @@
-import React from "react"
+import React, { Dispatch, SetStateAction} from "react"
 import styled from "styled-components"
 import { Spacing, BorderRadius, FontWeight } from "shared/styles/styles"
 import { Images } from "assets/images"
@@ -9,8 +9,10 @@ import { RollStateSwitcher } from "staff-app/components/roll-state/roll-state-sw
 interface Props {
   isRollMode?: boolean
   student: Person
+  setStudentList?: Dispatch<SetStateAction<any>>;
+  studentsArray?: Person[];
 }
-export const StudentListTile: React.FC<Props> = ({ isRollMode, student }) => {
+export const StudentListTile: React.FC<Props> = ({ isRollMode, student, setStudentList, studentsArray }) => {
   return (
     <S.Container>
       <S.Avatar url={Images.avatar}></S.Avatar>
@@ -19,7 +21,7 @@ export const StudentListTile: React.FC<Props> = ({ isRollMode, student }) => {
       </S.Content>
       {isRollMode && (
         <S.Roll>
-          <RollStateSwitcher />
+          <RollStateSwitcher studentsArray={studentsArray} attendance={student.attendance} studentId={student.id} setStudentList={setStudentList}/>
         </S.Roll>
       )}
     </S.Container>

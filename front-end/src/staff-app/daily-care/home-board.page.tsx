@@ -6,35 +6,52 @@ import { Spacing, BorderRadius, FontWeight } from "shared/styles/styles"
 import { Colors } from "shared/styles/colors"
 import { CenteredContainer } from "shared/components/centered-container/centered-container.component"
 import { Person } from "shared/models/person"
+import { AttendanceCount } from "shared/models/roll"
 import { useApi } from "shared/hooks/use-api"
 import { StudentListTile } from "staff-app/components/student-list-tile/student-list-tile.component"
 import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active-roll-overlay/active-roll-overlay.component"
 import { Switch } from '@material-ui/core';
 import { faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons";
 
-interface AttendanceCount {
-  all: number;
-  present: number;
-  absent: number;
-  late: number;
-}
-
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
   const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
 
   const [sortOrder, setSortOrder] = useState<string>('asc')
+  const [studentList, setStudentList] = useState<Person[]>();
   const [sortName, setSortName] = useState<string>('first_name')
   const [searchName, setSearchName] = useState<string>('')
   const [attendanceCount, setAttendanceCount] = useState<AttendanceCount>({ all: 0, present: 0, absent: 0, late: 0 })
 
-  console.log('sortOrder', sortOrder);
-  console.log('sortName', sortName);
-  console.log('searchName', searchName);
-
   useEffect(() => {
     void getStudents()
   }, [getStudents])
+
+  useEffect(() => {
+    const studentArr: Person[] = [];
+    const initStudentList: Person[] = data?.students || [];
+    if (initStudentList.length > 0) {
+      for (let i = 0; i < initStudentList.length; i++) {
+        const studentObj: Person = initStudentList[i];
+        studentObj['attendance'] = 'unmark';
+        studentArr.push(studentObj);
+      }
+      setStudentList(studentArr)
+    }
+
+  }, [data]);
+
+  useEffect(() => {
+
+    if (studentList && studentList.length > 0) {
+      const presentStudent: number = studentList.filter((item) => item.attendance === 'present').length;
+      const lateStudent: number = studentList.filter((item) => item.attendance === 'late').length;
+      const absentStudent: number = studentList.filter((item) => item.attendance === 'absent').length;
+      const all: number = studentList.length;
+      setAttendanceCount({ all: all, present: presentStudent, late: lateStudent, absent: absentStudent })
+    }
+
+  }, [studentList])
 
   const onToolbarAction = (action: ToolbarAction) => {
     if (action === "roll") {
@@ -50,9 +67,13 @@ export const HomeBoardPage: React.FC = () => {
 
   const sortByOrderAndName = (studentA: Person, studentB: Person) => {
     if (sortOrder === 'asc' && (sortName === 'first_name' || sortName === 'last_name')) {
-      return studentA[sortName].toLowerCase() > studentB[sortName].toLowerCase() ? 1 : -1
+      return studentA[sortName].toLowerCase() > studentB[sortName].toLowerCase()
+        ? 1 : -1;
     } else {
-      return (sortName === 'first_name' || sortName === 'last_name') && studentA[sortName].toLowerCase() < studentB[sortName].toLowerCase() ? 1 : -1
+      return ((sortName === 'first_name' || sortName === 'last_name')
+        &&
+        studentA[sortName].toLowerCase() < studentB[sortName].toLowerCase())
+        ? 1 : -1;
     }
 
   }
@@ -63,9 +84,9 @@ export const HomeBoardPage: React.FC = () => {
     }
   }
 
-  let studentsList = data?.students && data.students;
-  studentsList = studentsList?.sort((a, b) => sortByOrderAndName(a, b));
-  studentsList = studentsList?.filter(student => sortBySearchName(student));
+  let studentsArray = studentList;
+  studentsArray = studentsArray?.sort((a, b) => sortByOrderAndName(a, b));
+  studentsArray = studentsArray?.filter(student => sortBySearchName(student));
 
   return (
     <>
@@ -87,10 +108,10 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
 
-        {loadState === "loaded" && studentsList && (
+        {loadState === "loaded" && studentsArray && (
           <>
-            {studentsList.map((s) => (
-              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} />
+            {studentsArray.map((s, index) => (
+              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} setStudentList={setStudentList} studentsArray={studentsArray} />
             ))}
           </>
         )}
@@ -101,7 +122,7 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
       </S.PageContainer>
-      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} />
+      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} attendanceCount={attendanceCount} />
     </>
   )
 }

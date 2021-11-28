@@ -10,3 +10,10 @@ export interface RollInput {
 }
 
 export type RolllStateType = "unmark" | "present" | "absent" | "late"
+
+export interface AttendanceCount {
+  all: number;
+  present: number;
+  absent: number;
+  late: number;
+}
