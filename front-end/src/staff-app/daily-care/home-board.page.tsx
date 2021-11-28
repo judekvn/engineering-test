@@ -10,14 +10,27 @@ import { useApi } from "shared/hooks/use-api"
 import { StudentListTile } from "staff-app/components/student-list-tile/student-list-tile.component"
 import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active-roll-overlay/active-roll-overlay.component"
 import { Switch } from '@material-ui/core';
-import { faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons"
+import { faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons";
+
+interface AttendanceCount {
+  all: number;
+  present: number;
+  absent: number;
+  late: number;
+}
 
 export const HomeBoardPage: React.FC = () => {
   const [isRollMode, setIsRollMode] = useState(false)
   const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
+
   const [sortOrder, setSortOrder] = useState<string>('asc')
   const [sortName, setSortName] = useState<string>('first_name')
   const [searchName, setSearchName] = useState<string>('')
+  const [attendanceCount, setAttendanceCount] = useState<AttendanceCount>({ all: 0, present: 0, absent: 0, late: 0 })
+
+  console.log('sortOrder', sortOrder);
+  console.log('sortName', sortName);
+  console.log('searchName', searchName);
 
   useEffect(() => {
     void getStudents()
@@ -34,6 +47,25 @@ export const HomeBoardPage: React.FC = () => {
       setIsRollMode(false)
     }
   }
+
+  const sortByOrderAndName = (studentA: Person, studentB: Person) => {
+    if (sortOrder === 'asc' && (sortName === 'first_name' || sortName === 'last_name')) {
+      return studentA[sortName].toLowerCase() > studentB[sortName].toLowerCase() ? 1 : -1
+    } else {
+      return (sortName === 'first_name' || sortName === 'last_name') && studentA[sortName].toLowerCase() < studentB[sortName].toLowerCase() ? 1 : -1
+    }
+
+  }
+
+  const sortBySearchName = (student: Person) => {
+    if ((student.first_name + ' ' + student.last_name).toLowerCase().includes(searchName.toLowerCase())) {
+      return true
+    }
+  }
+
+  let studentsList = data?.students && data.students;
+  studentsList = studentsList?.sort((a, b) => sortByOrderAndName(a, b));
+  studentsList = studentsList?.filter(student => sortBySearchName(student));
 
   return (
     <>
@@ -55,9 +87,9 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
 
-        {loadState === "loaded" && data?.students && (
+        {loadState === "loaded" && studentsList && (
           <>
-            {data.students.map((s) => (
+            {studentsList.map((s) => (
               <StudentListTile key={s.id} isRollMode={isRollMode} student={s} />
             ))}
           </>
@@ -86,27 +118,37 @@ interface ToolbarProps {
 }
 const Toolbar: React.FC<ToolbarProps> = (props) => {
   const [sortByFirstName, setSortByFirstName] = useState(false)
-  const { onItemClick, setSortOrder, sortOrder, searchName, setSearchName } = props
+  const { onItemClick, setSortOrder, sortOrder, searchName, setSearchName, setSortName } = props
+
+  const nameSwitchHandle = () => {
+    if (sortByFirstName) {
+      setSortByFirstName(false);
+      setSortName('first_name');
+    } else {
+      setSortByFirstName(true);
+      setSortName('last_name');
+    }
+  }
 
   return (
     <S.ToolbarContainer>
       <S.NameContainer>
-        <S.ArrowButton onClick={() => sortOrder === "asc" ? setSortOrder("desc") : setSortOrder("asc")}>
-          <FontAwesomeIcon icon={sortOrder === "asc" ? faArrowDown : faArrowUp} />
+        <S.ArrowButton onClick={() => sortOrder === 'asc' ? setSortOrder('desc') : setSortOrder('asc')}>
+          <FontAwesomeIcon icon={sortOrder === 'asc' ? faArrowDown : faArrowUp} />
         </S.ArrowButton>
         <S.ToolbarName> Name </S.ToolbarName>
         <S.SwitchContainer>
           <span>First Name</span>
           <Switch
             checked={sortByFirstName}
-            onChange={() => sortByFirstName ? setSortByFirstName(false) : setSortByFirstName(true)}
-            name="sortByName"
+            onChange={() => nameSwitchHandle()}
+            name='sortByName'
             inputProps={{ 'aria-label': 'secondary checkbox' }}
           />
           <span>Last Name</span>
         </S.SwitchContainer>
       </S.NameContainer>
-      <S.InputContainer placeholder="Search" value={searchName} onChange={(e) => setSearchName(e.target.value)} />
+      <S.InputContainer placeholder='Search' value={searchName} onChange={(e) => setSearchName(e.target.value)} />
       <S.Button onClick={() => onItemClick("roll")}>Start Roll</S.Button>
     </S.ToolbarContainer>
   )
