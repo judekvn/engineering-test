@@ -12,59 +12,81 @@ import { StudentListTile } from "staff-app/components/student-list-tile/student-
 import { ActiveRollOverlay, ActiveRollAction } from "staff-app/components/active-roll-overlay/active-roll-overlay.component"
 import { Switch } from '@material-ui/core';
 import { faArrowUp, faArrowDown } from "@fortawesome/free-solid-svg-icons";
+import {  useNavigate } from "react-router-dom";
 
 export const HomeBoardPage: React.FC = () => {
-  const [isRollMode, setIsRollMode] = useState(false)
+  // Api calls.
   const [getStudents, data, loadState] = useApi<{ students: Person[] }>({ url: "get-homeboard-students" })
-
-  const [sortOrder, setSortOrder] = useState<string>('asc')
+  const [saveRoll] = useApi<{ students: Person[] }>({ url: "save-roll" })
+  
+  // Student list state.
   const [studentList, setStudentList] = useState<Person[]>();
-  const [sortName, setSortName] = useState<string>('first_name')
-  const [searchName, setSearchName] = useState<string>('')
-  const [attendanceCount, setAttendanceCount] = useState<AttendanceCount>({ all: 0, present: 0, absent: 0, late: 0 })
 
+  // Search and sort state.
+  const [sortOrder, setSortOrder] = useState<string>('asc');
+  const [sortName, setSortName] = useState<string>('first_name');
+  const [searchName, setSearchName] = useState<string>('');
+
+  // Roll mode and Attendance filter and counter state.
+  const [isRollMode, setIsRollMode] = useState<boolean>(false)
+  const [attendanceCount, setAttendanceCount] = useState<AttendanceCount>({ all: 0, present: 0, absent: 0, late: 0 });
+  const [attendanceFilter, setAttendanceFilter] = useState<string>('all');
+
+  let navigate = useNavigate();
+
+  
+  // Call students api function.
   useEffect(() => {
     void getStudents()
   }, [getStudents])
 
+  // Set student list once we get the data.
   useEffect(() => {
-    const studentArr: Person[] = [];
-    const initStudentList: Person[] = data?.students || [];
-    if (initStudentList.length > 0) {
-      for (let i = 0; i < initStudentList.length; i++) {
-        const studentObj: Person = initStudentList[i];
-        studentObj['attendance'] = 'unmark';
-        studentArr.push(studentObj);
-      }
-      setStudentList(studentArr)
+    if (data && data.students) {
+      setStudentList(data.students)
     }
-
   }, [data]);
 
+  // Set attendance count on Roll mode.
   useEffect(() => {
-
     if (studentList && studentList.length > 0) {
       const presentStudent: number = studentList.filter((item) => item.attendance === 'present').length;
       const lateStudent: number = studentList.filter((item) => item.attendance === 'late').length;
       const absentStudent: number = studentList.filter((item) => item.attendance === 'absent').length;
       const all: number = studentList.length;
+
       setAttendanceCount({ all: all, present: presentStudent, late: lateStudent, absent: absentStudent })
     }
 
   }, [studentList])
 
+  //Enable roll mode.
   const onToolbarAction = (action: ToolbarAction) => {
     if (action === "roll") {
       setIsRollMode(true)
     }
   }
 
+  // Roll mode action items(exit, complete).
   const onActiveRollAction = (action: ActiveRollAction) => {
     if (action === "exit") {
       setIsRollMode(false)
+      setAttendanceFilter('all')
+      setStudentList(data?.students);
+    } else {
+      const student_roll_states = studentList?.map((item) => {
+        return {
+          student_id: item.id,
+          roll_state: item.attendance ? item.attendance : 'unmark'
+        }
+      })
+
+      saveRoll({ student_roll_states })
+      navigate('/staff/activity')
     }
   }
 
+  // Sort the student list alphabetically and first_name or last_name basis.
   const sortByOrderAndName = (studentA: Person, studentB: Person) => {
     if (sortOrder === 'asc' && (sortName === 'first_name' || sortName === 'last_name')) {
       return studentA[sortName].toLowerCase() > studentB[sortName].toLowerCase()
@@ -78,15 +100,36 @@ export const HomeBoardPage: React.FC = () => {
 
   }
 
+  // Search by name.
   const sortBySearchName = (student: Person) => {
     if ((student.first_name + ' ' + student.last_name).toLowerCase().includes(searchName.toLowerCase())) {
       return true
     }
   }
 
+  // Filter students list by attendance selected on roll on mode.
+  const filterByAttendance = (student: Person) => {
+
+    if (attendanceFilter === 'present' && student.attendance === 'present') {
+      return true;
+    } else if (attendanceFilter === 'absent' && student.attendance === 'absent') {
+      return true;
+    } else if (attendanceFilter === 'late' && student.attendance === 'late') {
+      return true;
+    } else if (attendanceFilter === 'all') {
+      return true;
+    }
+  }
+
+
+  // Call search,filter,sort function on student list.
   let studentsArray = studentList;
   studentsArray = studentsArray?.sort((a, b) => sortByOrderAndName(a, b));
   studentsArray = studentsArray?.filter(student => sortBySearchName(student));
+
+  if (isRollMode) {
+    studentsArray = studentsArray?.filter(student => filterByAttendance(student));
+  }
 
   return (
     <>
@@ -111,7 +154,12 @@ export const HomeBoardPage: React.FC = () => {
         {loadState === "loaded" && studentsArray && (
           <>
             {studentsArray.map((s, index) => (
-              <StudentListTile key={s.id} isRollMode={isRollMode} student={s} setStudentList={setStudentList} studentsArray={studentsArray} />
+              <StudentListTile
+                key={s.id}
+                isRollMode={isRollMode}
+                student={s}
+                setStudentList={setStudentList}
+                studentsArray={studentsArray} />
             ))}
           </>
         )}
@@ -122,7 +170,12 @@ export const HomeBoardPage: React.FC = () => {
           </CenteredContainer>
         )}
       </S.PageContainer>
-      <ActiveRollOverlay isActive={isRollMode} onItemClick={onActiveRollAction} attendanceCount={attendanceCount} />
+      <ActiveRollOverlay
+        isActive={isRollMode}
+        onItemClick={onActiveRollAction}
+        attendanceCount={attendanceCount}
+        setAttendanceFilter={setAttendanceFilter}
+        studentList={studentList} />
     </>
   )
 }
@@ -137,10 +190,12 @@ interface ToolbarProps {
   searchName: string;
   setSearchName: Dispatch<SetStateAction<string>>;
 }
+
 const Toolbar: React.FC<ToolbarProps> = (props) => {
   const [sortByFirstName, setSortByFirstName] = useState(false)
   const { onItemClick, setSortOrder, sortOrder, searchName, setSearchName, setSortName } = props
 
+  // Switch handler between names.
   const nameSwitchHandle = () => {
     if (sortByFirstName) {
       setSortByFirstName(false);

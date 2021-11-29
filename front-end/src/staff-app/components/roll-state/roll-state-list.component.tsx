@@ -1,4 +1,4 @@
-import React from "react"
+import React, { SetStateAction, Dispatch } from "react"
 import styled from "styled-components"
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"
 import { RollStateIcon } from "staff-app/components/roll-state/roll-state-icon.component"
@@ -9,12 +9,12 @@ interface Props {
   stateList: StateList[]
   onItemClick?: (type: ItemType) => void
   size?: number
+  setAttendanceFilter: Dispatch<SetStateAction<string>>;
 }
-export const RollStateList: React.FC<Props> = ({ stateList, size = 14, onItemClick }) => {
+export const RollStateList: React.FC<Props> = ({ stateList, size = 14, onItemClick, setAttendanceFilter }) => {
+  // Select attendance type on Roll mode for filter;
   const onClick = (type: ItemType) => {
-    if (onItemClick) {
-      onItemClick(type)
-    }
+    setAttendanceFilter(type)
   }
 
   return (

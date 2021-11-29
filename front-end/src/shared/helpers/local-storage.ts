@@ -5,6 +5,7 @@ export function add<T>(key: LocalStorageKey, value: T) {
 
 export function addIfNotExist<T>(key: LocalStorageKey, value: T) {
   const itemInStore = get<T>(key)
+
   // add to local storage if not exist
   if (!itemInStore) {
     return add(key, value)

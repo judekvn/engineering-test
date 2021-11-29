@@ -5,6 +5,12 @@ export interface Roll {
   student_roll_states: { student_id: number; roll_state: RolllStateType }[]
 }
 
+export interface RollEntity {
+  type: string;
+  date: string;
+  entity: Roll;
+}
+
 export interface RollInput {
   student_roll_states: { student_id: number; roll_state: RolllStateType }[]
 }

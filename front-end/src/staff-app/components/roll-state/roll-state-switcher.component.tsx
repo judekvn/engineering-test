@@ -12,14 +12,15 @@ interface Props {
   studentsArray?: Person[]
 }
 export const RollStateSwitcher: React.FC<Props> = ({ initialState = "unmark", size = 40, onStateChange, attendance, setStudentList, studentId, studentsArray }) => {
+  // Mark attendance for each student state.
   const [rollState, setRollState] = useState(initialState);
 
   useEffect(() => {
-    if (attendance) {
-      setRollState(attendance)
-    }
+    const rollState = attendance ? attendance : 'unmark';
+    setRollState(rollState);
   }, [attendance])
 
+  // Change attendance in student list.
   const changeStudentAttendance = (studentState: string) => {
     let updatedList = studentsArray && studentsArray.length > 0 && studentsArray.map(item => {
       if (item.id === studentId) {
@@ -38,6 +39,7 @@ export const RollStateSwitcher: React.FC<Props> = ({ initialState = "unmark", si
     return matchingIndex > -1 ? states[matchingIndex + 1] : states[0]
   }
 
+  // Mark attendance on click.
   const onClick = () => {
     const next = nextState()
     changeStudentAttendance(next)
